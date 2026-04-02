@@ -90,7 +90,7 @@ export default function LinesPage() {
 
   return (
     <>
-      <Nav user={null} />
+      <Nav />
       <div className={styles.controls}>
         <span className={styles.filterLabel}>Game</span>
         <select value={gameFilter} onChange={e => setGameFilter(e.target.value)}>

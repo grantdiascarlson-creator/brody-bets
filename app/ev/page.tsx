@@ -105,7 +105,7 @@ export default function EVPage() {
 
   return (
     <>
-      <Nav user={null} />
+      <Nav />
 
       <div className={styles.hero}>
         <div className={styles.heroLeft}>

@@ -38,11 +38,11 @@ export async function middleware(request: NextRequest) {
     // Check if user is approved
     const { data: access } = await supabase
       .from('user_access')
-      .select('approved')
+      .select('approved, override')
       .eq('id', user.id)
       .single()
 
-    if (!access?.approved) {
+    if (!access?.approved && !access?.override) {
       return NextResponse.redirect(new URL('/pending', request.url))
     }
   }

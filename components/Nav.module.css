@@ -66,3 +66,18 @@
 .subBtn:hover {
   background: var(--gold-light);
 }
+
+.logoutBtn {
+  font-size: 12px;
+  color: var(--muted);
+  border: 0.5px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 12px;
+  background: transparent;
+  transition: color 0.15s;
+}
+
+.logoutBtn:hover {
+  color: var(--red);
+  border-color: var(--red);
+}

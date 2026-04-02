@@ -1,15 +1,37 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { createBrowserClient } from '@supabase/ssr'
 import styles from './Nav.module.css'
 
-type User = {
-  email: string
-} | null
-
-export default function Nav({ user }: { user: User }) {
+export default function Nav() {
   const pathname = usePathname()
+  const router = useRouter()
+  const [email, setEmail] = useState<string | null>(null)
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setEmail(user?.email ?? null)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setEmail(session?.user?.email ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   return (
     <nav className={styles.nav}>
@@ -21,12 +43,15 @@ export default function Nav({ user }: { user: User }) {
         EV Table
       </Link>
       <div className={styles.navRight}>
-        {user ? (
-          <span className={styles.userBadge}>{user.email}</span>
+        {email ? (
+          <>
+            <span className={styles.userBadge}>{email}</span>
+            <button className={styles.logoutBtn} onClick={handleLogout}>Log out</button>
+          </>
         ) : (
           <>
             <Link href="/login" className={styles.userBadge}>Log in</Link>
-            <Link href="/subscribe" className={styles.subBtn}>Subscribe</Link>
+            <Link href="/signup" className={styles.subBtn}>Subscribe</Link>
           </>
         )}
       </div>

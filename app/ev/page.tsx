@@ -6,8 +6,6 @@ import styles from './ev.module.css'
 
 const FREE_ROWS = 2
 
-const [lastUpdated, setLastUpdated] = useState<string | null>(null)
-
 const STAT_LABELS: Record<string, string> = {
   points: 'Points',
   rebounds: 'Rebounds',
@@ -53,6 +51,7 @@ export default function EVPage() {
   const [games, setGames] = useState<string[]>([])
   const [books, setBooks] = useState<string[]>([])
   const [stats, setStats] = useState<{ key: string, label: string }[]>([])
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
   useEffect(() => {
       async function load() {

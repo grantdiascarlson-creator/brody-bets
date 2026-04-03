@@ -15,7 +15,7 @@ export default function PendingPage() {
         <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 24 }}>
           Questions? Reach out at{' '}
           <a href="mailto:brodybets@gmail.com" style={{ color: 'var(--gold)' }}>
-            brodybets@gmail.com
+            thebrodybets@gmail.com
           </a>
         </p>
         <Link href="/lines" style={{

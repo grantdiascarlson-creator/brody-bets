@@ -128,10 +128,11 @@ export default function EVPage() {
               <div className={styles.pillLabel}>Last updated</div>
               <div className={styles.pillVal} style={{ fontSize: 13, paddingTop: 4 }}>
                 {new Date(lastUpdated).toLocaleString('en-US', {
+                  timeZone: 'America/New_York',
                   month: 'short', day: 'numeric',
                   hour: 'numeric', minute: '2-digit',
                   hour12: true
-                })}
+                })} ET
               </div>
             </div>
           )}

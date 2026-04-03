@@ -18,7 +18,6 @@ export async function GET() {
     }
   )
 
-  // Check if user is logged in and approved/override
   const { data: { user } } = await supabase.auth.getUser()
   let subscribed = false
 
@@ -41,10 +40,17 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  const { data: settings } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'last_updated')
+    .single()
+
   const rows = data || []
   const games = [...new Set(rows.map((r: any) => r.game))].filter(Boolean)
   const books = [...new Set(rows.map((r: any) => r.bookmaker))].filter(Boolean)
   const stats = [...new Set(rows.map((r: any) => r.stat))].filter(Boolean)
+  const lastUpdated = settings?.value || null
 
-  return NextResponse.json({ rows, games, books, stats, subscribed })
+  return NextResponse.json({ rows, games, books, stats, subscribed, lastUpdated })
 }

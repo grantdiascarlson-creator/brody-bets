@@ -6,6 +6,8 @@ import styles from './ev.module.css'
 
 const FREE_ROWS = 2
 
+const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+
 const STAT_LABELS: Record<string, string> = {
   points: 'Points',
   rebounds: 'Rebounds',
@@ -53,18 +55,19 @@ export default function EVPage() {
   const [stats, setStats] = useState<{ key: string, label: string }[]>([])
 
   useEffect(() => {
-    async function load() {
-      const res = await fetch('/api/ev')
-      const data = await res.json()
-      setRows(data.rows || [])
-      setSubscribed(data.subscribed || false)
-      setGames(data.games || [])
-      setBooks(data.books || [])
-      setStats((data.stats || []).map((s: string) => ({ key: s, label: STAT_LABELS[s] || s })))
-      setLoading(false)
-    }
-    load()
-  }, [])
+      async function load() {
+        const res = await fetch('/api/ev')
+        const data = await res.json()
+        setRows(data.rows || [])
+        setSubscribed(data.subscribed || false)
+        setGames(data.games || [])
+        setBooks(data.books || [])
+        setStats((data.stats || []).map((s: string) => ({ key: s, label: STAT_LABELS[s] || s })))
+        setLastUpdated(data.lastUpdated || null)
+        setLoading(false)
+      }
+      load()
+    }, [])
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d * -1)
@@ -121,6 +124,18 @@ export default function EVPage() {
             <div className={styles.pillLabel}>Games today</div>
             <div className={styles.pillVal}>{games.length}</div>
           </div>
+          {lastUpdated && (
+            <div className={styles.statPill}>
+              <div className={styles.pillLabel}>Last updated</div>
+              <div className={styles.pillVal} style={{ fontSize: 13, paddingTop: 4 }}>
+                {new Date(lastUpdated).toLocaleString('en-US', {
+                  month: 'short', day: 'numeric',
+                  hour: 'numeric', minute: '2-digit',
+                  hour12: true
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

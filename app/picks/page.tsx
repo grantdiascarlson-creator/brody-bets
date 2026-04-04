@@ -29,16 +29,15 @@ const STAT_LABELS: Record<string, string> = {
 
 // $100 on underdogs, bet to win $100 on favourites
 function calcStake(odds: number, units: number): number {
-  if (odds > 0) return 100 * units
-  return (Math.abs(odds) / 100) * 100 * units
+  if (odds > 0) return 100 * units                   // risk $100 on underdogs
+  return (Math.abs(odds) / 100) * 100 * units        // risk more to win $100 on favourites
 }
 
 function calcPnl(odds: number, units: number, result: string): number {
   if (result === 'pending') return 0
-  const stake = calcStake(odds, units)
-  if (result === 'loss') return -stake
-  if (odds > 0) return (odds / 100) * 100 * units
-  return 100 * units
+  if (result === 'win') return 100 * units          // always win $100 per unit
+  // loss: lose the stake (more than $100 on favourites)
+  return -calcStake(odds, units)
 }
 
 export default function PicksPage() {

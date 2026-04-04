@@ -42,11 +42,11 @@ export default function EVPage() {
   const [rows, setRows] = useState<EVRow[]>([])
   const [loading, setLoading] = useState(true)
   const [subscribed, setSubscribed] = useState(false)
-  const [gameFilter, setGameFilter] = useState('')
-  const [statFilter, setStatFilter] = useState('')
-  const [bookFilter, setBookFilter] = useState('')
-  const [scenarioFilter, setScenarioFilter] = useState('')
-  const [marketFilter, setMarketFilter] = useState('')
+  const [teamFilter, setTeamFilter] = useState<string[]>([])
+  const [statFilter, setStatFilter] = useState<string[]>([])
+  const [bookFilter, setBookFilter] = useState<string[]>([])
+  const [scenarioFilter, setScenarioFilter] = useState<string[]>([])
+  const [marketFilter, setMarketFilter] = useState<string[]>([])
   const [posOnly, setPosOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('ev')
   const [sortDir, setSortDir] = useState(-1)
@@ -75,14 +75,24 @@ export default function EVPage() {
     else { setSortKey(key); setSortDir(-1) }
   }
 
+  function handleMultiSelect(
+    e: React.ChangeEvent<HTMLSelectElement>,
+    setter: React.Dispatch<React.SetStateAction<string[]>>
+  ) {
+    const selected = Array.from(e.target.selectedOptions).map(o => o.value)
+    setter(selected)
+  }
+
   const filtered = rows
     .filter(r => {
-      if (gameFilter && r.game !== gameFilter) return false
-      if (statFilter && r.stat !== statFilter) return false
-      if (bookFilter && r.bookmaker !== bookFilter) return false
-      if (scenarioFilter === 'default' && r.scenario !== 'Default') return false
-      if (scenarioFilter === 'alt' && r.scenario === 'Default') return false
-      if (marketFilter && r.market_type !== marketFilter) return false
+      if (teamFilter.length > 0 && !teamFilter.includes(r.game)) return false
+      if (statFilter.length > 0 && !statFilter.includes(r.stat)) return false
+      if (bookFilter.length > 0 && !bookFilter.includes(r.bookmaker)) return false
+      if (scenarioFilter.length > 0) {
+        if (scenarioFilter.includes('default') && r.scenario !== 'Default') return false
+        if (scenarioFilter.includes('alt') && r.scenario === 'Default') return false
+      }
+      if (marketFilter.length > 0 && !marketFilter.includes(r.market_type)) return false
       if (posOnly && r.ev <= 0) return false
       return true
     })
@@ -143,38 +153,59 @@ export default function EVPage() {
       </div>
 
       <div className={styles.controls}>
-        <span className={styles.filterLabel}>Game</span>
-        <select value={gameFilter} onChange={e => setGameFilter(e.target.value)}>
-          <option value="">All games</option>
-          {games.map(g => <option key={g} value={g}>{g}</option>)}
-        </select>
-        <span className={styles.filterLabel}>Stat</span>
-        <select value={statFilter} onChange={e => setStatFilter(e.target.value)}>
-          <option value="">All stats</option>
-          {stats.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-        </select>
-        <span className={styles.filterLabel}>Book</span>
-        <select value={bookFilter} onChange={e => setBookFilter(e.target.value)}>
-          <option value="">All books</option>
-          {books.map(b => <option key={b} value={b}>{b}</option>)}
-        </select>
-        <span className={styles.filterLabel}>Scenario</span>
-        <select value={scenarioFilter} onChange={e => setScenarioFilter(e.target.value)}>
-          <option value="">All scenarios</option>
-          <option value="default">Default only</option>
-          <option value="alt">Injury scenarios</option>
-        </select>
-        <span className={styles.filterLabel}>Market</span>
-        <select value={marketFilter} onChange={e => setMarketFilter(e.target.value)}>
-          <option value="">All markets</option>
-          <option value="standard">Standard O/U</option>
-          <option value="alternate">Alternate (X+ lines)</option>
-        </select>
+        <div className={styles.filterGroup}>
+          <span className={styles.filterLabel}>Team</span>
+          <select multiple value={teamFilter} onChange={e => handleMultiSelect(e, setTeamFilter)} className={styles.multiSelect}>
+            {games.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+        </div>
+        <div className={styles.filterGroup}>
+          <span className={styles.filterLabel}>Stat</span>
+          <select multiple value={statFilter} onChange={e => handleMultiSelect(e, setStatFilter)} className={styles.multiSelect}>
+            {stats.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+        </div>
+        <div className={styles.filterGroup}>
+          <span className={styles.filterLabel}>Book</span>
+          <select multiple value={bookFilter} onChange={e => handleMultiSelect(e, setBookFilter)} className={styles.multiSelect}>
+            {books.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </div>
+        <div className={styles.filterGroup}>
+          <span className={styles.filterLabel}>Scenario</span>
+          <select multiple value={scenarioFilter} onChange={e => handleMultiSelect(e, setScenarioFilter)} className={styles.multiSelect}>
+            <option value="default">Default</option>
+            <option value="alt">Injury scenarios</option>
+          </select>
+        </div>
+        <div className={styles.filterGroup}>
+          <span className={styles.filterLabel}>Market</span>
+          <select multiple value={marketFilter} onChange={e => handleMultiSelect(e, setMarketFilter)} className={styles.multiSelect}>
+            <option value="standard">Standard O/U</option>
+            <option value="alternate">Alternate (X+)</option>
+          </select>
+        </div>
+        <div className={styles.filterGroup}>
+          <span className={styles.filterLabel}>&nbsp;</span>
+          <button
+            className={`${styles.toggleBtn} ${posOnly ? styles.on : ''}`}
+            onClick={() => setPosOnly(v => !v)}
+          >
+            + EV only
+          </button>
+        </div>
         <button
-          className={`${styles.toggleBtn} ${posOnly ? styles.on : ''}`}
-          onClick={() => setPosOnly(v => !v)}
+          className={styles.clearBtn}
+          onClick={() => {
+            setTeamFilter([])
+            setStatFilter([])
+            setBookFilter([])
+            setScenarioFilter([])
+            setMarketFilter([])
+            setPosOnly(false)
+          }}
         >
-          + EV only
+          Clear filters
         </button>
       </div>
 
@@ -261,7 +292,7 @@ export default function EVPage() {
               const res = await fetch('/api/stripe/checkout', { method: 'POST' })
               const data = await res.json()
               if (data.url) window.location.href = data.url
-              else window.location.href = '/login'  // redirect to login if not authenticated
+              else window.location.href = '/login'
             }}>
               Subscribe — $5 / month
             </button>

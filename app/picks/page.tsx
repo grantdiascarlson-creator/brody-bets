@@ -105,6 +105,7 @@ export default function PicksPage() {
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [statFilter, setStatFilter] = useState<string[]>([])
+  const [bookFilter, setBookFilter] = useState<string[]>([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
@@ -127,12 +128,14 @@ export default function PicksPage() {
 
   // All unique stats in picks
   const availableStats = [...new Set(picks.map(p => p.stat))].sort()
+  const availableBooks = [...new Set(picks.map(p => p.bookmaker))].sort()
 
   // Apply filters
   const filtered = picks.filter(p => {
     if (statFilter.length > 0 && !statFilter.includes(p.stat)) return false
     if (startDate && p.game_date < startDate) return false
     if (endDate && p.game_date > endDate) return false
+    if (bookFilter.length > 0 && !bookFilter.includes(p.bookmaker)) return false
     return true
   })
 
@@ -149,7 +152,7 @@ export default function PicksPage() {
 
   const roi = summary.staked > 0 ? (summary.pnl / summary.staked) * 100 : 0
 
-  const hasFilters = statFilter.length > 0 || startDate || endDate
+  const hasFilters = statFilter.length > 0 || bookFilter.length > 0 || startDate || endDate
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -241,6 +244,12 @@ export default function PicksPage() {
           selected={statFilter}
           onChange={setStatFilter}
         />
+        <MultiDropdown
+          label="Book"
+          options={availableBooks.map(b => ({ value: b, label: b }))}
+          selected={bookFilter}
+          onChange={setBookFilter}
+        />
         <div className={styles.dateGroup}>
           <span className={styles.filterLabel}>From</span>
           <input
@@ -262,6 +271,7 @@ export default function PicksPage() {
         {hasFilters && (
           <button className={styles.clearBtn} onClick={() => {
             setStatFilter([])
+            setBookFilter([])
             setStartDate('')
             setEndDate('')
           }}>

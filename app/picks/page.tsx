@@ -14,6 +14,7 @@ type Pick = {
   ev: number | null
   bookmaker: string
   units: number
+  submitted_at: string
   result: 'win' | 'loss' | 'pending'
   actual_result: number | null
   game_date: string
@@ -263,6 +264,17 @@ export default function PicksPage() {
                     <td><span className={styles.bookBadge}>{p.bookmaker}</span></td>
                     <td>{p.units}u</td>
                     <td className={styles.mutedCell}>${stake.toFixed(0)}</td>
+                    <td className={styles.mutedCell}>
+                      <div>{p.game_date}</div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                        Added {new Date(p.submitted_at).toLocaleString('en-US', {
+                          timeZone: 'America/New_York',
+                          month: 'short', day: 'numeric',
+                          hour: 'numeric', minute: '2-digit',
+                          hour12: true
+                        })} ET
+                      </div>
+                    </td>
                     <td>
                       <span className={
                         p.result === 'win' ? styles.win :

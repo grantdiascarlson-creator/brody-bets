@@ -38,6 +38,7 @@ export async function GET() {
     .lte('ev', 60)
     .neq('ev', 0)
     .order('ev', { ascending: false })
+    .limit(10000)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
       line:      body.line,
       direction: body.direction,
       odds:      body.odds,
+      ev:       body.ev ?? null,
       bookmaker: body.bookmaker,
       units:     body.units,
       game_date: body.game_date,

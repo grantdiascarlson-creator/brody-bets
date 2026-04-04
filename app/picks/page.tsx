@@ -11,6 +11,7 @@ type Pick = {
   line: number
   direction: string
   odds: number
+  ev: number | null
   bookmaker: string
   units: number
   result: 'win' | 'loss' | 'pending'
@@ -49,7 +50,7 @@ export default function PicksPage() {
 
   const [form, setForm] = useState({
     player: '', stat: 'points', line: '', direction: 'over',
-    odds: '', bookmaker: '', units: '1',
+    odds: '', ev: '', bookmaker: '', units: '1',
     game_date: new Date().toISOString().split('T')[0], notes: ''
   })
 
@@ -87,6 +88,7 @@ export default function PicksPage() {
         ...form,
         line: parseFloat(form.line),
         odds: parseInt(form.odds),
+        ev: form.ev ? parseFloat(form.ev) : null,
         units: parseFloat(form.units),
       })
     })
@@ -96,7 +98,7 @@ export default function PicksPage() {
       setShowForm(false)
       setForm({
         player: '', stat: 'points', line: '', direction: 'over',
-        odds: '', bookmaker: '', units: '1',
+        odds: '', ev: '', bookmaker: '', units: '1',
         game_date: new Date().toISOString().split('T')[0], notes: ''
       })
     }
@@ -187,6 +189,10 @@ export default function PicksPage() {
               <input type="number" value={form.odds} onChange={e => setForm(f => ({ ...f, odds: e.target.value }))} placeholder="-110" required />
             </div>
             <div className={styles.field}>
+              <label>EV %</label>
+              <input type="number" step="0.1" value={form.ev} onChange={e => setForm(f => ({ ...f, ev: e.target.value }))} placeholder="5.2" />
+            </div>
+            <div className={styles.field}>
               <label>Book</label>
               <input value={form.bookmaker} onChange={e => setForm(f => ({ ...f, bookmaker: e.target.value }))} placeholder="bet365" required />
             </div>
@@ -222,6 +228,7 @@ export default function PicksPage() {
                 <th>Line</th>
                 <th>Dir</th>
                 <th>Odds</th>
+                <th>EV%</th>
                 <th>Book</th>
                 <th>Units</th>
                 <th>Stake</th>
@@ -246,6 +253,13 @@ export default function PicksPage() {
                       </span>
                     </td>
                     <td>{p.odds > 0 ? `+${p.odds}` : p.odds}</td>
+                    <td>
+                      {p.ev != null ? (
+                        <span className={p.ev > 0 ? styles.pos : styles.neg}>
+                          {p.ev > 0 ? '+' : ''}{p.ev.toFixed(1)}%
+                        </span>
+                      ) : <span className={styles.mutedCell}>—</span>}
+                    </td>
                     <td><span className={styles.bookBadge}>{p.bookmaker}</span></td>
                     <td>{p.units}u</td>
                     <td className={styles.mutedCell}>${stake.toFixed(0)}</td>

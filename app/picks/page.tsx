@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Nav from '@/components/Nav'
 import styles from './picks.module.css'
 
@@ -14,10 +14,10 @@ type Pick = {
   ev: number | null
   bookmaker: string
   units: number
-  submitted_at: string
   result: 'win' | 'loss' | 'pending'
   actual_result: number | null
   game_date: string
+  submitted_at: string
   notes: string | null
 }
 
@@ -29,17 +29,73 @@ const STAT_LABELS: Record<string, string> = {
   'rebounds+assists': 'Reb+Ast', 'blocks+steals': 'Blk+Stl',
 }
 
-// $100 on underdogs, bet to win $100 on favourites
 function calcStake(odds: number, units: number): number {
-  if (odds > 0) return 100 * units                   // risk $100 on underdogs
-  return (Math.abs(odds) / 100) * 100 * units        // risk more to win $100 on favourites
+  if (odds > 0) return 100 * units
+  return (Math.abs(odds) / 100) * 100 * units
 }
 
 function calcPnl(odds: number, units: number, result: string): number {
   if (result === 'pending') return 0
-  if (result === 'win') return 100 * units          // always win $100 per unit
-  // loss: lose the stake (more than $100 on favourites)
+  if (result === 'win') return 100 * units
   return -calcStake(odds, units)
+}
+
+function MultiDropdown({
+  label, options, selected, onChange,
+}: {
+  label: string
+  options: { value: string; label: string }[]
+  selected: string[]
+  onChange: (vals: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function toggle(val: string) {
+    if (selected.includes(val)) onChange(selected.filter(v => v !== val))
+    else onChange([...selected, val])
+  }
+
+  const displayLabel = selected.length === 0
+    ? label
+    : selected.length === 1
+      ? (options.find(o => o.value === selected[0])?.label || selected[0])
+      : `${label} (${selected.length})`
+
+  return (
+    <div className={styles.dropdownWrap} ref={ref}>
+      <button
+        className={`${styles.dropdownBtn} ${selected.length > 0 ? styles.dropdownActive : ''}`}
+        onClick={() => setOpen(v => !v)}
+      >
+        {displayLabel}
+        <span className={styles.dropdownArrow}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className={styles.dropdownMenu}>
+          {options.map(o => (
+            <label key={o.value} className={styles.checkLabel}>
+              <input
+                type="checkbox"
+                checked={selected.includes(o.value)}
+                onChange={() => toggle(o.value)}
+                className={styles.checkbox}
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function PicksPage() {
@@ -48,6 +104,9 @@ export default function PicksPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [statFilter, setStatFilter] = useState<string[]>([])
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   const [form, setForm] = useState({
     player: '', stat: 'points', line: '', direction: 'over',
@@ -66,8 +125,19 @@ export default function PicksPage() {
     load()
   }, [])
 
-  // Summary stats
-  const summary = picks.reduce((acc, p) => {
+  // All unique stats in picks
+  const availableStats = [...new Set(picks.map(p => p.stat))].sort()
+
+  // Apply filters
+  const filtered = picks.filter(p => {
+    if (statFilter.length > 0 && !statFilter.includes(p.stat)) return false
+    if (startDate && p.game_date < startDate) return false
+    if (endDate && p.game_date > endDate) return false
+    return true
+  })
+
+  // Summary stats on filtered picks
+  const summary = filtered.reduce((acc, p) => {
     acc.total++
     if (p.result === 'win') acc.wins++
     else if (p.result === 'loss') acc.losses++
@@ -78,6 +148,8 @@ export default function PicksPage() {
   }, { total: 0, wins: 0, losses: 0, pending: 0, pnl: 0, staked: 0 })
 
   const roi = summary.staked > 0 ? (summary.pnl / summary.staked) * 100 : 0
+
+  const hasFilters = statFilter.length > 0 || startDate || endDate
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -161,6 +233,43 @@ export default function PicksPage() {
         )}
       </div>
 
+      {/* Filters */}
+      <div className={styles.controls}>
+        <MultiDropdown
+          label="Stat"
+          options={availableStats.map(s => ({ value: s, label: STAT_LABELS[s] || s }))}
+          selected={statFilter}
+          onChange={setStatFilter}
+        />
+        <div className={styles.dateGroup}>
+          <span className={styles.filterLabel}>From</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={e => setStartDate(e.target.value)}
+            className={styles.dateInput}
+          />
+        </div>
+        <div className={styles.dateGroup}>
+          <span className={styles.filterLabel}>To</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={e => setEndDate(e.target.value)}
+            className={styles.dateInput}
+          />
+        </div>
+        {hasFilters && (
+          <button className={styles.clearBtn} onClick={() => {
+            setStatFilter([])
+            setStartDate('')
+            setEndDate('')
+          }}>
+            Clear
+          </button>
+        )}
+      </div>
+
       {isAdmin && showForm && (
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.formGrid}>
@@ -218,8 +327,8 @@ export default function PicksPage() {
 
       <div className={styles.tableWrap}>
         {loading && <div className={styles.loading}>Loading picks...</div>}
-        {!loading && picks.length === 0 && <div className={styles.loading}>No picks yet.</div>}
-        {!loading && picks.length > 0 && (
+        {!loading && filtered.length === 0 && <div className={styles.loading}>No picks found.</div>}
+        {!loading && filtered.length > 0 && (
           <table className={styles.table}>
             <thead>
               <tr>
@@ -239,12 +348,24 @@ export default function PicksPage() {
               </tr>
             </thead>
             <tbody>
-              {picks.map(p => {
+              {filtered.map(p => {
                 const pnl = calcPnl(p.odds, p.units, p.result)
                 const stake = calcStake(p.odds, p.units)
                 return (
                   <tr key={p.id}>
-                    <td className={styles.mutedCell}>{p.game_date}</td>
+                    <td className={styles.mutedCell}>
+                      <div>{p.game_date}</div>
+                      {p.submitted_at && (
+                        <div style={{ fontSize: 11, marginTop: 2 }}>
+                          Added {new Date(p.submitted_at).toLocaleString('en-US', {
+                            timeZone: 'America/New_York',
+                            month: 'short', day: 'numeric',
+                            hour: 'numeric', minute: '2-digit',
+                            hour12: true
+                          })} ET
+                        </div>
+                      )}
+                    </td>
                     <td className={styles.playerCell}>{p.player}</td>
                     <td className={styles.mutedCell}>{STAT_LABELS[p.stat] || p.stat}</td>
                     <td>{p.line}</td>
@@ -264,17 +385,6 @@ export default function PicksPage() {
                     <td><span className={styles.bookBadge}>{p.bookmaker}</span></td>
                     <td>{p.units}u</td>
                     <td className={styles.mutedCell}>${stake.toFixed(0)}</td>
-                    <td className={styles.mutedCell}>
-                      <div>{p.game_date}</div>
-                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-                        Added {new Date(p.submitted_at).toLocaleString('en-US', {
-                          timeZone: 'America/New_York',
-                          month: 'short', day: 'numeric',
-                          hour: 'numeric', minute: '2-digit',
-                          hour12: true
-                        })} ET
-                      </div>
-                    </td>
                     <td>
                       <span className={
                         p.result === 'win' ? styles.win :

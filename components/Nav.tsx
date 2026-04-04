@@ -42,6 +42,9 @@ export default function Nav() {
       <Link href="/ev" className={`${styles.navLink} ${pathname === '/ev' ? styles.active : ''}`}>
         EV Table
       </Link>
+      <Link href="/picks" className={`${styles.navLink} ${pathname === '/picks' ? styles.active : ''}`}>
+        Picks
+      </Link>
       <div className={styles.navRight}>
         {email ? (
           <>

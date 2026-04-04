@@ -136,3 +136,28 @@ export async function PATCH(request: NextRequest) {
 
   return NextResponse.json({ success: true })
 }
+
+export async function DELETE(request: NextRequest) {
+  const { user } = await getSupabaseWithUser()
+  if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 })
+
+  const { data: access } = await serviceClient
+    .from('user_access')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+
+  if (!access?.is_admin) {
+    return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+  }
+
+  const body = await request.json()
+
+  const { error } = await serviceClient
+    .from('picks')
+    .delete()
+    .eq('id', body.id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}

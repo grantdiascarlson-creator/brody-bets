@@ -196,7 +196,7 @@ export default function EVPage() {
           </div>
           <div className={styles.statPill}>
             <div className={styles.pillLabel}>Games today</div>
-            <div className={styles.pillVal}>{games.length}</div>
+            <div className={styles.pillVal}>{Math.ceil(games.length / 2)}</div>
           </div>
           {lastUpdated && (
             <div className={styles.statPill}>

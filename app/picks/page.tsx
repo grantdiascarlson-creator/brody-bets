@@ -110,6 +110,16 @@ export default function PicksPage() {
     setPicks(prev => prev.map(p => p.id === id ? { ...p, result: result as any, actual_result: actual_result ?? p.actual_result } : p))
   }
 
+  async function deletePick(id: number) {
+  if (!confirm('Delete this pick?')) return
+  await fetch('/api/picks', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  })
+  setPicks(prev => prev.filter(p => p.id !== id))
+}
+
   return (
     <>
       <Nav />
@@ -258,6 +268,7 @@ export default function PicksPage() {
                             const actual = prompt('Actual result?')
                             updateResult(p.id, 'loss', actual ? parseFloat(actual) : undefined)
                           }}>L</button>
+                          <button className={styles.deleteBtn} onClick={() => deletePick(p.id)}>✕</button>
                         </div>
                       </td>
                     )}

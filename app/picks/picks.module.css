@@ -214,3 +214,18 @@
   padding: 3px 8px;
   font-weight: 500;
 }
+
+.deleteBtn {
+  background: transparent;
+  border: 0.5px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 3px 7px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.deleteBtn:hover {
+  color: var(--red);
+  border-color: var(--red);
+}

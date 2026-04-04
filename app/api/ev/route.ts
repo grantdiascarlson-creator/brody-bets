@@ -34,8 +34,9 @@ export async function GET() {
   const { data, error } = await supabase
     .from('props')
     .select('*')
-    .gte('odds', -300)        // exclude heavy favourites
-    .lte('ev', 60)            // exclude suspiciously high EV
+    .gte('odds', -300)
+    .lte('ev', 60)
+    .neq('ev', 0)
     .order('ev', { ascending: false })
 
   if (error) {

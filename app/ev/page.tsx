@@ -33,6 +33,7 @@ type EVRow = {
   q_warning: string | null
   ev: number
   game: string
+  market_type: string
 }
 
 type SortKey = keyof EVRow
@@ -45,6 +46,7 @@ export default function EVPage() {
   const [statFilter, setStatFilter] = useState('')
   const [bookFilter, setBookFilter] = useState('')
   const [scenarioFilter, setScenarioFilter] = useState('')
+  const [marketFilter, setMarketFilter] = useState('')
   const [posOnly, setPosOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('ev')
   const [sortDir, setSortDir] = useState(-1)
@@ -54,19 +56,19 @@ export default function EVPage() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
   useEffect(() => {
-      async function load() {
-        const res = await fetch('/api/ev')
-        const data = await res.json()
-        setRows(data.rows || [])
-        setSubscribed(data.subscribed || false)
-        setGames(data.games || [])
-        setBooks(data.books || [])
-        setStats((data.stats || []).map((s: string) => ({ key: s, label: STAT_LABELS[s] || s })))
-        setLastUpdated(data.lastUpdated || null)
-        setLoading(false)
-      }
-      load()
-    }, [])
+    async function load() {
+      const res = await fetch('/api/ev')
+      const data = await res.json()
+      setRows(data.rows || [])
+      setSubscribed(data.subscribed || false)
+      setGames(data.games || [])
+      setBooks(data.books || [])
+      setStats((data.stats || []).map((s: string) => ({ key: s, label: STAT_LABELS[s] || s })))
+      setLastUpdated(data.lastUpdated || null)
+      setLoading(false)
+    }
+    load()
+  }, [])
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d * -1)
@@ -80,6 +82,7 @@ export default function EVPage() {
       if (bookFilter && r.bookmaker !== bookFilter) return false
       if (scenarioFilter === 'default' && r.scenario !== 'Default') return false
       if (scenarioFilter === 'alt' && r.scenario === 'Default') return false
+      if (marketFilter && r.market_type !== marketFilter) return false
       if (posOnly && r.ev <= 0) return false
       return true
     })
@@ -161,6 +164,12 @@ export default function EVPage() {
           <option value="default">Default only</option>
           <option value="alt">Injury scenarios</option>
         </select>
+        <span className={styles.filterLabel}>Market</span>
+        <select value={marketFilter} onChange={e => setMarketFilter(e.target.value)}>
+          <option value="">All markets</option>
+          <option value="standard">Standard O/U</option>
+          <option value="alternate">Alternate (X+ lines)</option>
+        </select>
         <button
           className={`${styles.toggleBtn} ${posOnly ? styles.on : ''}`}
           onClick={() => setPosOnly(v => !v)}
@@ -181,6 +190,7 @@ export default function EVPage() {
                 <SortTh col="direction" label="Dir" />
                 <SortTh col="odds" label="Odds" />
                 <SortTh col="bookmaker" label="Book" />
+                <SortTh col="market_type" label="Market" />
                 <SortTh col="proj" label="Proj" />
                 <SortTh col="scenario" label="Scenario" />
                 <th>Q Warning</th>
@@ -200,6 +210,11 @@ export default function EVPage() {
                   </td>
                   <td>{r.odds > 0 ? `+${r.odds}` : r.odds}</td>
                   <td><span className={styles.bookBadge}>{r.bookmaker}</span></td>
+                  <td>
+                    <span className={r.market_type === 'alternate' ? styles.scenAlt : styles.scenDefault}>
+                      {r.market_type === 'alternate' ? 'Alt' : 'O/U'}
+                    </span>
+                  </td>
                   <td className={styles.mutedCell}>{r.proj}</td>
                   <td>
                     <span className={r.scenario === 'Default' ? styles.scenDefault : styles.scenAlt}>
@@ -238,8 +253,8 @@ export default function EVPage() {
             <p>See all positive EV props across every book, every game, every day.<br />Cancel anytime.</p>
             <div className={styles.paywallFeatures}>
               <div className={styles.feature}><div className={styles.featureDot} />Full prop table — all books</div>
+              <div className={styles.feature}><div className={styles.featureDot} />Alternate line EV (X+ points)</div>
               <div className={styles.feature}><div className={styles.featureDot} />Injury scenario projections</div>
-              <div className={styles.feature}><div className={styles.featureDot} />Q warnings on default scenarios</div>
               <div className={styles.feature}><div className={styles.featureDot} />Updated daily before tip-off</div>
             </div>
             <button className={styles.ctaBtn}>Subscribe — $29 / month</button>

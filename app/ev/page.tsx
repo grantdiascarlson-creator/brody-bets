@@ -38,6 +38,11 @@ type EVRow = {
 
 type SortKey = keyof EVRow
 
+function calcEvPct(ev: number, odds: number): number {
+  const stake = odds > 0 ? 100 : Math.abs(odds)
+  return (ev / stake) * 100
+}
+
 function MultiDropdown({
   label,
   options,
@@ -315,7 +320,7 @@ export default function EVPage() {
                   </td>
                   <td>
                     <span className={r.ev > 0 ? styles.evPos : styles.evNeg}>
-                      {r.ev > 0 ? '+' : ''}{r.ev.toFixed(1)}%
+                      {r.ev > 0 ? '+' : ''}{calcEvPct(r.ev, r.odds).toFixed(1)}%
                     </span>
                     {r.ev > 0 && (
                       <span

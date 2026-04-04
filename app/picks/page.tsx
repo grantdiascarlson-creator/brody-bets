@@ -19,15 +19,6 @@ type Pick = {
   notes: string | null
 }
 
-type Summary = {
-  total: number
-  wins: number
-  losses: number
-  pending: number
-  unitsWon: number
-  roi: number
-}
-
 const STAT_LABELS: Record<string, string> = {
   points: 'Points', rebounds: 'Rebounds', assists: 'Assists',
   threePointersMade: '3PM', blocks: 'Blocks', steals: 'Steals',
@@ -36,11 +27,18 @@ const STAT_LABELS: Record<string, string> = {
   'rebounds+assists': 'Reb+Ast', 'blocks+steals': 'Blk+Stl',
 }
 
-function calcUnits(odds: number, units: number, result: string): number {
+// $100 on underdogs, bet to win $100 on favourites
+function calcStake(odds: number, units: number): number {
+  if (odds > 0) return 100 * units
+  return (Math.abs(odds) / 100) * 100 * units
+}
+
+function calcPnl(odds: number, units: number, result: string): number {
   if (result === 'pending') return 0
-  if (result === 'loss') return -units
-  if (odds > 0) return (odds / 100) * units
-  return (100 / Math.abs(odds)) * units
+  const stake = calcStake(odds, units)
+  if (result === 'loss') return -stake
+  if (odds > 0) return (odds / 100) * 100 * units
+  return 100 * units
 }
 
 export default function PicksPage() {
@@ -52,7 +50,8 @@ export default function PicksPage() {
 
   const [form, setForm] = useState({
     player: '', stat: 'points', line: '', direction: 'over',
-    odds: '', bookmaker: '', units: '1', game_date: new Date().toISOString().split('T')[0], notes: ''
+    odds: '', bookmaker: '', units: '1',
+    game_date: new Date().toISOString().split('T')[0], notes: ''
   })
 
   useEffect(() => {
@@ -66,18 +65,18 @@ export default function PicksPage() {
     load()
   }, [])
 
-  const summary: Summary = picks.reduce((acc, p) => {
+  // Summary stats
+  const summary = picks.reduce((acc, p) => {
     acc.total++
     if (p.result === 'win') acc.wins++
     else if (p.result === 'loss') acc.losses++
     else acc.pending++
-    acc.unitsWon += calcUnits(p.odds, p.units, p.result)
+    acc.pnl += calcPnl(p.odds, p.units, p.result)
+    if (p.result !== 'pending') acc.staked += calcStake(p.odds, p.units)
     return acc
-  }, { total: 0, wins: 0, losses: 0, pending: 0, unitsWon: 0, roi: 0 })
+  }, { total: 0, wins: 0, losses: 0, pending: 0, pnl: 0, staked: 0 })
 
-  const settledBets = picks.filter(p => p.result !== 'pending')
-  const totalStaked = settledBets.reduce((a, p) => a + p.units, 0)
-  summary.roi = totalStaked > 0 ? (summary.unitsWon / totalStaked) * 100 : 0
+  const roi = summary.staked > 0 ? (summary.pnl / summary.staked) * 100 : 0
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -96,29 +95,33 @@ export default function PicksPage() {
       const data = await res.json()
       setPicks(prev => [data.pick, ...prev])
       setShowForm(false)
-      setForm({ player: '', stat: 'points', line: '', direction: 'over', odds: '', bookmaker: '', units: '1', game_date: new Date().toISOString().split('T')[0], notes: '' })
+      setForm({
+        player: '', stat: 'points', line: '', direction: 'over',
+        odds: '', bookmaker: '', units: '1',
+        game_date: new Date().toISOString().split('T')[0], notes: ''
+      })
     }
     setSubmitting(false)
   }
 
-  async function updateResult(id: number, result: string, actual_result?: number) {
+  async function updateResult(id: number, result: string) {
     await fetch('/api/picks', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, result, actual_result })
+      body: JSON.stringify({ id, result })
     })
-    setPicks(prev => prev.map(p => p.id === id ? { ...p, result: result as any, actual_result: actual_result ?? p.actual_result } : p))
+    setPicks(prev => prev.map(p => p.id === id ? { ...p, result: result as any } : p))
   }
 
   async function deletePick(id: number) {
-  if (!confirm('Delete this pick?')) return
-  await fetch('/api/picks', {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id })
-  })
-  setPicks(prev => prev.filter(p => p.id !== id))
-}
+    if (!confirm('Delete this pick?')) return
+    await fetch('/api/picks', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    })
+    setPicks(prev => prev.filter(p => p.id !== id))
+  }
 
   return (
     <>
@@ -132,18 +135,20 @@ export default function PicksPage() {
         <div className={styles.heroStats}>
           <div className={styles.statPill}>
             <div className={styles.pillLabel}>Record</div>
-            <div className={styles.pillVal}>{summary.wins}-{summary.losses}{summary.pending > 0 ? `-${summary.pending}` : ''}</div>
+            <div className={styles.pillVal}>
+              {summary.wins}-{summary.losses}{summary.pending > 0 ? `-${summary.pending}` : ''}
+            </div>
           </div>
           <div className={styles.statPill}>
-            <div className={styles.pillLabel}>Units</div>
-            <div className={`${styles.pillVal} ${summary.unitsWon >= 0 ? styles.pos : styles.neg}`}>
-              {summary.unitsWon >= 0 ? '+' : ''}{summary.unitsWon.toFixed(1)}u
+            <div className={styles.pillLabel}>P&amp;L</div>
+            <div className={`${styles.pillVal} ${summary.pnl >= 0 ? styles.pos : styles.neg}`}>
+              {summary.pnl >= 0 ? '+' : ''}${summary.pnl.toFixed(0)}
             </div>
           </div>
           <div className={styles.statPill}>
             <div className={styles.pillLabel}>ROI</div>
-            <div className={`${styles.pillVal} ${summary.roi >= 0 ? styles.pos : styles.neg}`}>
-              {summary.roi >= 0 ? '+' : ''}{summary.roi.toFixed(1)}%
+            <div className={`${styles.pillVal} ${roi >= 0 ? styles.pos : styles.neg}`}>
+              {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
             </div>
           </div>
         </div>
@@ -220,25 +225,31 @@ export default function PicksPage() {
                 <th>Odds</th>
                 <th>Book</th>
                 <th>Units</th>
+                <th>Stake</th>
                 <th>Result</th>
-                <th>Actual</th>
-                <th>P&L</th>
+                <th>P&amp;L</th>
                 {isAdmin && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
               {picks.map(p => {
-                const pnl = calcUnits(p.odds, p.units, p.result)
+                const pnl = calcPnl(p.odds, p.units, p.result)
+                const stake = calcStake(p.odds, p.units)
                 return (
                   <tr key={p.id}>
                     <td className={styles.mutedCell}>{p.game_date}</td>
                     <td className={styles.playerCell}>{p.player}</td>
                     <td className={styles.mutedCell}>{STAT_LABELS[p.stat] || p.stat}</td>
                     <td>{p.line}</td>
-                    <td><span className={p.direction === 'over' ? styles.dirOver : styles.dirUnder}>{p.direction}</span></td>
+                    <td>
+                      <span className={p.direction === 'over' ? styles.dirOver : styles.dirUnder}>
+                        {p.direction}
+                      </span>
+                    </td>
                     <td>{p.odds > 0 ? `+${p.odds}` : p.odds}</td>
                     <td><span className={styles.bookBadge}>{p.bookmaker}</span></td>
                     <td>{p.units}u</td>
+                    <td className={styles.mutedCell}>${stake.toFixed(0)}</td>
                     <td>
                       <span className={
                         p.result === 'win' ? styles.win :
@@ -248,26 +259,20 @@ export default function PicksPage() {
                         {p.result.charAt(0).toUpperCase() + p.result.slice(1)}
                       </span>
                     </td>
-                    <td className={styles.mutedCell}>{p.actual_result ?? '—'}</td>
                     <td>
-                      {p.result !== 'pending' && (
+                      {p.result !== 'pending' ? (
                         <span className={pnl >= 0 ? styles.pos : styles.neg}>
-                          {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}u
+                          {pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}
                         </span>
+                      ) : (
+                        <span className={styles.mutedCell}>—</span>
                       )}
-                      {p.result === 'pending' && <span className={styles.mutedCell}>—</span>}
                     </td>
                     {isAdmin && (
                       <td>
                         <div className={styles.actions}>
-                          <button className={styles.winBtn} onClick={() => {
-                            const actual = prompt('Actual result?')
-                            updateResult(p.id, 'win', actual ? parseFloat(actual) : undefined)
-                          }}>W</button>
-                          <button className={styles.lossBtn} onClick={() => {
-                            const actual = prompt('Actual result?')
-                            updateResult(p.id, 'loss', actual ? parseFloat(actual) : undefined)
-                          }}>L</button>
+                          <button className={styles.winBtn} onClick={() => updateResult(p.id, 'win')}>W</button>
+                          <button className={styles.lossBtn} onClick={() => updateResult(p.id, 'loss')}>L</button>
                           <button className={styles.deleteBtn} onClick={() => deletePick(p.id)}>✕</button>
                         </div>
                       </td>

@@ -349,7 +349,7 @@ export default function EVPage() {
               if (data.url) window.location.href = data.url
               else window.location.href = '/login'
             }}>
-              Subscribe — $29 / month
+              Subscribe — $5 / month
             </button>
             <div className={styles.ctaNote}>Already subscribed? <a href="/login" style={{ color: 'var(--gold)' }}>Log in</a></div>
           </div>

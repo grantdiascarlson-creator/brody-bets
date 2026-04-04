@@ -132,3 +132,46 @@
   color: var(--border);
   font-size: 16px;
 }
+
+.hero {
+  padding: 28px 32px 20px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.heroLeft h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  letter-spacing: 1px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.heroLeft p {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.statPill {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  text-align: center;
+}
+
+.pillLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+
+.pillVal {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--gold);
+}

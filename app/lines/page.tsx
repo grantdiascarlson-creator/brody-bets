@@ -42,6 +42,7 @@ export default function LinesPage() {
   const [gameFilter, setGameFilter] = useState('')
   const [statFilter, setStatFilter] = useState('')
   const [games, setGames] = useState<string[]>([])
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -49,6 +50,7 @@ export default function LinesPage() {
       const data = await res.json()
       setRows(data.rows || [])
       setGames(data.games || [])
+      setLastUpdated(data.lastUpdated || null)
       setLoading(false)
     }
     load()
@@ -91,6 +93,27 @@ export default function LinesPage() {
   return (
     <>
       <Nav />
+
+      <div className={styles.hero}>
+        <div className={styles.heroLeft}>
+          <h1>Lines</h1>
+          <p>NBA player prop lines compared across all books</p>
+        </div>
+        {lastUpdated && (
+          <div className={styles.statPill}>
+            <div className={styles.pillLabel}>Last updated</div>
+            <div className={styles.pillVal} style={{ fontSize: 13, paddingTop: 4 }}>
+              {new Date(lastUpdated).toLocaleString('en-US', {
+                timeZone: 'America/New_York',
+                month: 'short', day: 'numeric',
+                hour: 'numeric', minute: '2-digit',
+                hour12: true
+              })} ET
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className={styles.controls}>
         <span className={styles.filterLabel}>Game</span>
         <select value={gameFilter} onChange={e => setGameFilter(e.target.value)}>

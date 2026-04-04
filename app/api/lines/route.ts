@@ -41,8 +41,17 @@ export async function GET() {
     }
   }
 
+  const { data: settings } = await supabase
+  .from('settings')
+  .select('value')
+  .eq('key', 'last_updated')
+  .single()
+
+  const lastUpdated = settings?.value || null
+
   return NextResponse.json({
     rows: Object.values(grouped),
     games,
+    lastUpdated,
   })
 }

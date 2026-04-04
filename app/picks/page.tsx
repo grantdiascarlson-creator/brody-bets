@@ -108,6 +108,8 @@ export default function PicksPage() {
   const [bookFilter, setBookFilter] = useState<string[]>([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [minEv, setMinEv] = useState('')
+  const [maxEv, setMaxEv] = useState('')
 
   const [form, setForm] = useState({
     player: '', stat: 'points', line: '', direction: 'over',
@@ -126,20 +128,19 @@ export default function PicksPage() {
     load()
   }, [])
 
-  // All unique stats in picks
   const availableStats = [...new Set(picks.map(p => p.stat))].sort()
   const availableBooks = [...new Set(picks.map(p => p.bookmaker))].sort()
 
-  // Apply filters
   const filtered = picks.filter(p => {
     if (statFilter.length > 0 && !statFilter.includes(p.stat)) return false
+    if (bookFilter.length > 0 && !bookFilter.includes(p.bookmaker)) return false
     if (startDate && p.game_date < startDate) return false
     if (endDate && p.game_date > endDate) return false
-    if (bookFilter.length > 0 && !bookFilter.includes(p.bookmaker)) return false
+    if (minEv && (p.ev == null || p.ev < parseFloat(minEv))) return false
+    if (maxEv && (p.ev == null || p.ev > parseFloat(maxEv))) return false
     return true
   })
 
-  // Summary stats on filtered picks
   const summary = filtered.reduce((acc, p) => {
     acc.total++
     if (p.result === 'win') acc.wins++
@@ -152,7 +153,7 @@ export default function PicksPage() {
 
   const roi = summary.staked > 0 ? (summary.pnl / summary.staked) * 100 : 0
 
-  const hasFilters = statFilter.length > 0 || bookFilter.length > 0 || startDate || endDate
+  const hasFilters = statFilter.length > 0 || bookFilter.length > 0 || startDate || endDate || minEv || maxEv
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -236,7 +237,6 @@ export default function PicksPage() {
         )}
       </div>
 
-      {/* Filters */}
       <div className={styles.controls}>
         <MultiDropdown
           label="Stat"
@@ -252,21 +252,17 @@ export default function PicksPage() {
         />
         <div className={styles.dateGroup}>
           <span className={styles.filterLabel}>From</span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={e => setStartDate(e.target.value)}
-            className={styles.dateInput}
-          />
+          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={styles.dateInput} />
         </div>
         <div className={styles.dateGroup}>
           <span className={styles.filterLabel}>To</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={e => setEndDate(e.target.value)}
-            className={styles.dateInput}
-          />
+          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={styles.dateInput} />
+        </div>
+        <div className={styles.dateGroup}>
+          <span className={styles.filterLabel}>EV%</span>
+          <input type="number" step="0.1" value={minEv} onChange={e => setMinEv(e.target.value)} className={styles.dateInput} placeholder="Min" style={{ width: 70 }} />
+          <span className={styles.filterLabel}>–</span>
+          <input type="number" step="0.1" value={maxEv} onChange={e => setMaxEv(e.target.value)} className={styles.dateInput} placeholder="Max" style={{ width: 70 }} />
         </div>
         {hasFilters && (
           <button className={styles.clearBtn} onClick={() => {
@@ -274,6 +270,8 @@ export default function PicksPage() {
             setBookFilter([])
             setStartDate('')
             setEndDate('')
+            setMinEv('')
+            setMaxEv('')
           }}>
             Clear
           </button>

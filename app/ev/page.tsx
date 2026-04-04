@@ -261,7 +261,7 @@ export default function EVPage() {
               const res = await fetch('/api/stripe/checkout', { method: 'POST' })
               const data = await res.json()
               if (data.url) window.location.href = data.url
-              else alert('Please log in first to subscribe')
+              else window.location.href = '/login'  // redirect to login if not authenticated
             }}>
               Subscribe — $5 / month
             </button>

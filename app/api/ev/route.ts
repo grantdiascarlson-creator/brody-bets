@@ -24,11 +24,11 @@ export async function GET() {
   if (user) {
     const { data: access } = await supabase
       .from('user_access')
-      .select('approved, override')
+      .select('subscribed, override')
       .eq('id', user.id)
       .single()
 
-    subscribed = !!(access?.approved || access?.override)
+    subscribed = !!(access?.subscribed || access?.override)
   }
 
   const { data, error } = await supabase

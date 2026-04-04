@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     if (userId) {
       await supabase
         .from('user_access')
-        .update({ approved: true, stripe_customer_id: session.customer as string })
+        .update({ subscribed: true, stripe_customer_id: session.customer as string })
         .eq('id', userId)
 
       console.log(`Approved user ${userId}`)

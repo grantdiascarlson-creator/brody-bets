@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Nav from '@/components/Nav'
 import styles from './ev.module.css'
 
@@ -37,6 +37,67 @@ type EVRow = {
 }
 
 type SortKey = keyof EVRow
+
+function MultiDropdown({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string
+  options: { value: string; label: string }[]
+  selected: string[]
+  onChange: (vals: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function toggle(val: string) {
+    if (selected.includes(val)) onChange(selected.filter(v => v !== val))
+    else onChange([...selected, val])
+  }
+
+  const displayLabel = selected.length === 0
+    ? label
+    : selected.length === 1
+      ? (options.find(o => o.value === selected[0])?.label || selected[0])
+      : `${label} (${selected.length})`
+
+  return (
+    <div className={styles.dropdownWrap} ref={ref}>
+      <button
+        className={`${styles.dropdownBtn} ${selected.length > 0 ? styles.dropdownActive : ''}`}
+        onClick={() => setOpen(v => !v)}
+      >
+        {displayLabel}
+        <span className={styles.dropdownArrow}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className={styles.dropdownMenu}>
+          {options.map(o => (
+            <label key={o.value} className={styles.checkLabel}>
+              <input
+                type="checkbox"
+                checked={selected.includes(o.value)}
+                onChange={() => toggle(o.value)}
+                className={styles.checkbox}
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function EVPage() {
   const [rows, setRows] = useState<EVRow[]>([])
@@ -75,12 +136,16 @@ export default function EVPage() {
     else { setSortKey(key); setSortDir(-1) }
   }
 
-  function handleMultiSelect(
-    e: React.ChangeEvent<HTMLSelectElement>,
-    setter: React.Dispatch<React.SetStateAction<string[]>>
-  ) {
-    const selected = Array.from(e.target.selectedOptions).map(o => o.value)
-    setter(selected)
+  const hasFilters = teamFilter.length > 0 || statFilter.length > 0 || bookFilter.length > 0 ||
+    scenarioFilter.length > 0 || marketFilter.length > 0 || posOnly
+
+  function clearFilters() {
+    setTeamFilter([])
+    setStatFilter([])
+    setBookFilter([])
+    setScenarioFilter([])
+    setMarketFilter([])
+    setPosOnly(false)
   }
 
   const filtered = rows
@@ -89,8 +154,8 @@ export default function EVPage() {
       if (statFilter.length > 0 && !statFilter.includes(r.stat)) return false
       if (bookFilter.length > 0 && !bookFilter.includes(r.bookmaker)) return false
       if (scenarioFilter.length > 0) {
-        if (scenarioFilter.includes('default') && r.scenario !== 'Default') return false
-        if (scenarioFilter.includes('alt') && r.scenario === 'Default') return false
+        if (scenarioFilter.includes('default') && !scenarioFilter.includes('alt') && r.scenario !== 'Default') return false
+        if (scenarioFilter.includes('alt') && !scenarioFilter.includes('default') && r.scenario === 'Default') return false
       }
       if (marketFilter.length > 0 && !marketFilter.includes(r.market_type)) return false
       if (posOnly && r.ev <= 0) return false
@@ -109,10 +174,7 @@ export default function EVPage() {
   function SortTh({ col, label }: { col: SortKey, label: string }) {
     const active = sortKey === col
     return (
-      <th
-        className={active ? styles.sorted : ''}
-        onClick={() => handleSort(col)}
-      >
+      <th className={active ? styles.sorted : ''} onClick={() => handleSort(col)}>
         {label}{active ? (sortDir === -1 ? ' ↓' : ' ↑') : ''}
       </th>
     )
@@ -153,60 +215,53 @@ export default function EVPage() {
       </div>
 
       <div className={styles.controls}>
-        <div className={styles.filterGroup}>
-          <span className={styles.filterLabel}>Team</span>
-          <select multiple value={teamFilter} onChange={e => handleMultiSelect(e, setTeamFilter)} className={styles.multiSelect}>
-            {games.map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
-        </div>
-        <div className={styles.filterGroup}>
-          <span className={styles.filterLabel}>Stat</span>
-          <select multiple value={statFilter} onChange={e => handleMultiSelect(e, setStatFilter)} className={styles.multiSelect}>
-            {stats.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-          </select>
-        </div>
-        <div className={styles.filterGroup}>
-          <span className={styles.filterLabel}>Book</span>
-          <select multiple value={bookFilter} onChange={e => handleMultiSelect(e, setBookFilter)} className={styles.multiSelect}>
-            {books.map(b => <option key={b} value={b}>{b}</option>)}
-          </select>
-        </div>
-        <div className={styles.filterGroup}>
-          <span className={styles.filterLabel}>Scenario</span>
-          <select multiple value={scenarioFilter} onChange={e => handleMultiSelect(e, setScenarioFilter)} className={styles.multiSelect}>
-            <option value="default">Default</option>
-            <option value="alt">Injury scenarios</option>
-          </select>
-        </div>
-        <div className={styles.filterGroup}>
-          <span className={styles.filterLabel}>Market</span>
-          <select multiple value={marketFilter} onChange={e => handleMultiSelect(e, setMarketFilter)} className={styles.multiSelect}>
-            <option value="standard">Standard O/U</option>
-            <option value="alternate">Alternate (X+)</option>
-          </select>
-        </div>
-        <div className={styles.filterGroup}>
-          <span className={styles.filterLabel}>&nbsp;</span>
-          <button
-            className={`${styles.toggleBtn} ${posOnly ? styles.on : ''}`}
-            onClick={() => setPosOnly(v => !v)}
-          >
-            + EV only
-          </button>
-        </div>
+        <MultiDropdown
+          label="Team"
+          options={games.map(g => ({ value: g, label: g }))}
+          selected={teamFilter}
+          onChange={setTeamFilter}
+        />
+        <MultiDropdown
+          label="Stat"
+          options={stats.map(s => ({ value: s.key, label: s.label }))}
+          selected={statFilter}
+          onChange={setStatFilter}
+        />
+        <MultiDropdown
+          label="Book"
+          options={books.map(b => ({ value: b, label: b }))}
+          selected={bookFilter}
+          onChange={setBookFilter}
+        />
+        <MultiDropdown
+          label="Scenario"
+          options={[
+            { value: 'default', label: 'Default' },
+            { value: 'alt', label: 'Injury scenarios' },
+          ]}
+          selected={scenarioFilter}
+          onChange={setScenarioFilter}
+        />
+        <MultiDropdown
+          label="Market"
+          options={[
+            { value: 'standard', label: 'Standard O/U' },
+            { value: 'alternate', label: 'Alternate (X+)' },
+          ]}
+          selected={marketFilter}
+          onChange={setMarketFilter}
+        />
         <button
-          className={styles.clearBtn}
-          onClick={() => {
-            setTeamFilter([])
-            setStatFilter([])
-            setBookFilter([])
-            setScenarioFilter([])
-            setMarketFilter([])
-            setPosOnly(false)
-          }}
+          className={`${styles.toggleBtn} ${posOnly ? styles.on : ''}`}
+          onClick={() => setPosOnly(v => !v)}
         >
-          Clear filters
+          + EV only
         </button>
+        {hasFilters && (
+          <button className={styles.clearBtn} onClick={clearFilters}>
+            Clear
+          </button>
+        )}
       </div>
 
       <div className={styles.tableWrap}>
@@ -294,7 +349,7 @@ export default function EVPage() {
               if (data.url) window.location.href = data.url
               else window.location.href = '/login'
             }}>
-              Subscribe — $5 / month
+              Subscribe — $29 / month
             </button>
             <div className={styles.ctaNote}>Already subscribed? <a href="/login" style={{ color: 'var(--gold)' }}>Log in</a></div>
           </div>

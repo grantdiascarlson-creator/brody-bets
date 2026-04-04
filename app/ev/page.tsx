@@ -257,7 +257,14 @@ export default function EVPage() {
               <div className={styles.feature}><div className={styles.featureDot} />Injury scenario projections</div>
               <div className={styles.feature}><div className={styles.featureDot} />Updated daily before tip-off</div>
             </div>
-            <button className={styles.ctaBtn}>Subscribe — $29 / month</button>
+            <button className={styles.ctaBtn} onClick={async () => {
+              const res = await fetch('/api/stripe/checkout', { method: 'POST' })
+              const data = await res.json()
+              if (data.url) window.location.href = data.url
+              else alert('Please log in first to subscribe')
+            }}>
+              Subscribe — $5 / month
+            </button>
             <div className={styles.ctaNote}>Already subscribed? <a href="/login" style={{ color: 'var(--gold)' }}>Log in</a></div>
           </div>
         </div>

@@ -37,7 +37,7 @@ export default function SignupPage() {
   async function handleGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/pending` }
+      options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` }
     })
   }
 

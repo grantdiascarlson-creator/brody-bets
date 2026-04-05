@@ -36,8 +36,9 @@ function calcStake(odds: number, units: number): number {
 
 function calcPnl(odds: number, units: number, result: string): number {
   if (result === 'pending') return 0
-  if (result === 'win') return 100 * units
-  return -calcStake(odds, units)
+  if (result === 'loss') return -calcStake(odds, units)
+  if (odds > 0) return (odds / 100) * 100 * units
+  return 100 * units
 }
 
 function MultiDropdown({
@@ -100,8 +101,10 @@ function MultiDropdown({
 
 export default function PicksPage() {
   const [picks, setPicks] = useState<Pick[]>([])
+  const [summary, setSummary] = useState({ wins: 0, losses: 0, pending: 0, pnl: 0, staked: 0 })
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isSubscriber, setIsSubscriber] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [statFilter, setStatFilter] = useState<string[]>([])
@@ -122,7 +125,9 @@ export default function PicksPage() {
       const res = await fetch('/api/picks')
       const data = await res.json()
       setPicks(data.picks || [])
+      setSummary(data.summary || { wins: 0, losses: 0, pending: 0, pnl: 0, staked: 0 })
       setIsAdmin(data.isAdmin || false)
+      setIsSubscriber(data.isSubscriber || false)
       setLoading(false)
     }
     load()
@@ -141,19 +146,20 @@ export default function PicksPage() {
     return true
   })
 
-  const summary = filtered.reduce((acc, p) => {
-    acc.total++
+  // Recalculate summary from filtered picks
+  const filteredSummary = filtered.reduce((acc, p) => {
     if (p.result === 'win') acc.wins++
     else if (p.result === 'loss') acc.losses++
     else acc.pending++
     acc.pnl += calcPnl(p.odds, p.units, p.result)
     if (p.result !== 'pending') acc.staked += calcStake(p.odds, p.units)
     return acc
-  }, { total: 0, wins: 0, losses: 0, pending: 0, pnl: 0, staked: 0 })
+  }, { wins: 0, losses: 0, pending: 0, pnl: 0, staked: 0 })
 
-  const roi = summary.staked > 0 ? (summary.pnl / summary.staked) * 100 : 0
-
+  // Use filtered summary if filters active, else use server summary
   const hasFilters = statFilter.length > 0 || bookFilter.length > 0 || startDate || endDate || minEv || maxEv
+  const displaySummary = hasFilters ? filteredSummary : summary
+  const roi = displaySummary.staked > 0 ? (displaySummary.pnl / displaySummary.staked) * 100 : 0
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -214,13 +220,13 @@ export default function PicksPage() {
           <div className={styles.statPill}>
             <div className={styles.pillLabel}>Record</div>
             <div className={styles.pillVal}>
-              {summary.wins}-{summary.losses}{summary.pending > 0 ? `-${summary.pending}` : ''}
+              {displaySummary.wins}-{displaySummary.losses}{displaySummary.pending > 0 ? `-${displaySummary.pending}` : ''}
             </div>
           </div>
           <div className={styles.statPill}>
             <div className={styles.pillLabel}>P&amp;L</div>
-            <div className={`${styles.pillVal} ${summary.pnl >= 0 ? styles.pos : styles.neg}`}>
-              {summary.pnl >= 0 ? '+' : ''}${summary.pnl.toFixed(0)}
+            <div className={`${styles.pillVal} ${displaySummary.pnl >= 0 ? styles.pos : styles.neg}`}>
+              {displaySummary.pnl >= 0 ? '+' : ''}${displaySummary.pnl.toFixed(0)}
             </div>
           </div>
           <div className={styles.statPill}>
@@ -237,46 +243,48 @@ export default function PicksPage() {
         )}
       </div>
 
-      <div className={styles.controls}>
-        <MultiDropdown
-          label="Stat"
-          options={availableStats.map(s => ({ value: s, label: STAT_LABELS[s] || s }))}
-          selected={statFilter}
-          onChange={setStatFilter}
-        />
-        <MultiDropdown
-          label="Book"
-          options={availableBooks.map(b => ({ value: b, label: b }))}
-          selected={bookFilter}
-          onChange={setBookFilter}
-        />
-        <div className={styles.dateGroup}>
-          <span className={styles.filterLabel}>From</span>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={styles.dateInput} />
+      {isSubscriber && (
+        <div className={styles.controls}>
+          <MultiDropdown
+            label="Stat"
+            options={availableStats.map(s => ({ value: s, label: STAT_LABELS[s] || s }))}
+            selected={statFilter}
+            onChange={setStatFilter}
+          />
+          <MultiDropdown
+            label="Book"
+            options={availableBooks.map(b => ({ value: b, label: b }))}
+            selected={bookFilter}
+            onChange={setBookFilter}
+          />
+          <div className={styles.dateGroup}>
+            <span className={styles.filterLabel}>From</span>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={styles.dateInput} />
+          </div>
+          <div className={styles.dateGroup}>
+            <span className={styles.filterLabel}>To</span>
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={styles.dateInput} />
+          </div>
+          <div className={styles.dateGroup}>
+            <span className={styles.filterLabel}>EV%</span>
+            <input type="number" step="0.1" value={minEv} onChange={e => setMinEv(e.target.value)} className={styles.dateInput} placeholder="Min" style={{ width: 70 }} />
+            <span className={styles.filterLabel}>–</span>
+            <input type="number" step="0.1" value={maxEv} onChange={e => setMaxEv(e.target.value)} className={styles.dateInput} placeholder="Max" style={{ width: 70 }} />
+          </div>
+          {hasFilters && (
+            <button className={styles.clearBtn} onClick={() => {
+              setStatFilter([])
+              setBookFilter([])
+              setStartDate('')
+              setEndDate('')
+              setMinEv('')
+              setMaxEv('')
+            }}>
+              Clear
+            </button>
+          )}
         </div>
-        <div className={styles.dateGroup}>
-          <span className={styles.filterLabel}>To</span>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={styles.dateInput} />
-        </div>
-        <div className={styles.dateGroup}>
-          <span className={styles.filterLabel}>EV%</span>
-          <input type="number" step="0.1" value={minEv} onChange={e => setMinEv(e.target.value)} className={styles.dateInput} placeholder="Min" style={{ width: 70 }} />
-          <span className={styles.filterLabel}>–</span>
-          <input type="number" step="0.1" value={maxEv} onChange={e => setMaxEv(e.target.value)} className={styles.dateInput} placeholder="Max" style={{ width: 70 }} />
-        </div>
-        {hasFilters && (
-          <button className={styles.clearBtn} onClick={() => {
-            setStatFilter([])
-            setBookFilter([])
-            setStartDate('')
-            setEndDate('')
-            setMinEv('')
-            setMaxEv('')
-          }}>
-            Clear
-          </button>
-        )}
-      </div>
+      )}
 
       {isAdmin && showForm && (
         <form onSubmit={handleSubmit} className={styles.form}>
@@ -334,9 +342,17 @@ export default function PicksPage() {
       )}
 
       <div className={styles.tableWrap}>
-        {loading && <div className={styles.loading}>Loading picks...</div>}
-        {!loading && filtered.length === 0 && <div className={styles.loading}>No picks found.</div>}
-        {!loading && filtered.length > 0 && (
+        {loading && <div className={styles.loading}>Loading...</div>}
+        {!loading && !isSubscriber && (
+          <div className={styles.paywallMsg}>
+            <p>Subscribe to see the full picks list.</p>
+            <a href="/ev" className={styles.paywallLink}>Subscribe →</a>
+          </div>
+        )}
+        {!loading && isSubscriber && filtered.length === 0 && (
+          <div className={styles.loading}>No picks found.</div>
+        )}
+        {!loading && isSubscriber && filtered.length > 0 && (
           <table className={styles.table}>
             <thead>
               <tr>

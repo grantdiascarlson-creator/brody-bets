@@ -27,7 +27,18 @@ async function getSupabaseWithUser() {
   return { supabase, user }
 }
 
-// GET — fetch all picks + check if user is admin
+function calcStake(odds: number, units: number): number {
+  if (odds > 0) return 100 * units
+  return (Math.abs(odds) / 100) * 100 * units
+}
+
+function calcPnl(odds: number, units: number, result: string): number {
+  if (result === 'pending') return 0
+  if (result === 'loss') return -calcStake(odds, units)
+  if (odds > 0) return (odds / 100) * 100 * units
+  return 100 * units
+}
+
 export async function GET() {
   const { user } = await getSupabaseWithUser()
 
@@ -45,8 +56,25 @@ export async function GET() {
     isSubscriber = !!(access?.subscribed || access?.override || access?.is_admin)
   }
 
+  // Always fetch all picks for summary calculation
+  const { data: allPicks } = await serviceClient
+    .from('picks')
+    .select('odds, units, result')
+    .order('game_date', { ascending: false })
+
+  // Calculate summary from all picks
+  const summary = (allPicks || []).reduce((acc: any, p: any) => {
+    if (p.result === 'win') acc.wins++
+    else if (p.result === 'loss') acc.losses++
+    else acc.pending++
+    acc.pnl += calcPnl(p.odds, p.units, p.result)
+    if (p.result !== 'pending') acc.staked += calcStake(p.odds, p.units)
+    return acc
+  }, { wins: 0, losses: 0, pending: 0, pnl: 0, staked: 0 })
+
+  // Only return full picks to subscribers
   if (!isSubscriber) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ picks: [], summary, isAdmin, isSubscriber: false })
   }
 
   const { data: picks, error } = await serviceClient
@@ -59,82 +87,47 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ picks, isAdmin })
+  return NextResponse.json({ picks, summary, isAdmin, isSubscriber: true })
 }
 
-// POST — add a new pick (admin only)
 export async function POST(request: NextRequest) {
   const { user } = await getSupabaseWithUser()
-
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 })
 
   const { data: access } = await serviceClient
-    .from('user_access')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
+    .from('user_access').select('is_admin').eq('id', user.id).single()
 
-  if (!access?.is_admin) {
-    return NextResponse.json({ error: 'Admin only' }, { status: 403 })
-  }
+  if (!access?.is_admin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
   const body = await request.json()
-
   const { data: pick, error } = await serviceClient
     .from('picks')
     .insert({
-      player:    body.player,
-      stat:      body.stat,
-      line:      body.line,
-      direction: body.direction,
-      odds:      body.odds,
-      ev:       body.ev ?? null,
-      bookmaker: body.bookmaker,
-      units:     body.units,
-      game_date: body.game_date,
-      notes:     body.notes || null,
-      result:    'pending',
+      player: body.player, stat: body.stat, line: body.line,
+      direction: body.direction, odds: body.odds, bookmaker: body.bookmaker,
+      units: body.units, game_date: body.game_date, notes: body.notes || null,
+      ev: body.ev ?? null, result: 'pending',
     })
-    .select()
-    .single()
+    .select().single()
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ pick })
 }
 
-// PATCH — update result (admin only)
 export async function PATCH(request: NextRequest) {
   const { user } = await getSupabaseWithUser()
-
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 })
 
   const { data: access } = await serviceClient
-    .from('user_access')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
+    .from('user_access').select('is_admin').eq('id', user.id).single()
 
-  if (!access?.is_admin) {
-    return NextResponse.json({ error: 'Admin only' }, { status: 403 })
-  }
+  if (!access?.is_admin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
   const body = await request.json()
-
   const { error } = await serviceClient
-    .from('picks')
-    .update({
-      result:        body.result,
-      actual_result: body.actual_result ?? null,
-    })
-    .eq('id', body.id)
+    .from('picks').update({ result: body.result, actual_result: body.actual_result ?? null }).eq('id', body.id)
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }
 
@@ -143,21 +136,12 @@ export async function DELETE(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 })
 
   const { data: access } = await serviceClient
-    .from('user_access')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
+    .from('user_access').select('is_admin').eq('id', user.id).single()
 
-  if (!access?.is_admin) {
-    return NextResponse.json({ error: 'Admin only' }, { status: 403 })
-  }
+  if (!access?.is_admin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
   const body = await request.json()
-
-  const { error } = await serviceClient
-    .from('picks')
-    .delete()
-    .eq('id', body.id)
+  const { error } = await serviceClient.from('picks').delete().eq('id', body.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })

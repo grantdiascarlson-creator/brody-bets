@@ -350,3 +350,19 @@
   color: var(--red);
   border-color: var(--red);
 }
+
+.paywallMsg {
+  padding: 48px 32px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.paywallLink {
+  display: inline-block;
+  margin-top: 12px;
+  color: var(--gold);
+  font-size: 14px;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.3);
+  padding-bottom: 2px;
+}

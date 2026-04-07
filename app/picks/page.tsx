@@ -19,6 +19,7 @@ type Pick = {
   game_date: string
   submitted_at: string
   notes: string | null
+  team: string | null
 }
 
 const STAT_LABELS: Record<string, string> = {
@@ -109,6 +110,8 @@ export default function PicksPage() {
   const [submitting, setSubmitting] = useState(false)
   const [statFilter, setStatFilter] = useState<string[]>([])
   const [bookFilter, setBookFilter] = useState<string[]>([])
+  const [teamFilter, setTeamFilter] = useState<string[]>([])
+  const [directionFilter, setDirectionFilter] = useState<string[]>([])
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [minEv, setMinEv] = useState('')
@@ -116,7 +119,7 @@ export default function PicksPage() {
 
   const [form, setForm] = useState({
     player: '', stat: 'points', line: '', direction: 'over',
-    odds: '', ev: '', bookmaker: '', units: '1',
+    odds: '', ev: '', bookmaker: '', units: '1', team: '',
     game_date: new Date().toISOString().split('T')[0], notes: ''
   })
 
@@ -133,12 +136,16 @@ export default function PicksPage() {
     load()
   }, [])
 
+  // Sorted unique values for filters
   const availableStats = [...new Set(picks.map(p => p.stat))].sort()
   const availableBooks = [...new Set(picks.map(p => p.bookmaker))].sort()
+  const availableTeams = [...new Set(picks.map(p => p.team).filter(Boolean))].sort() as string[]
 
   const filtered = picks.filter(p => {
     if (statFilter.length > 0 && !statFilter.includes(p.stat)) return false
     if (bookFilter.length > 0 && !bookFilter.includes(p.bookmaker)) return false
+    if (teamFilter.length > 0 && !teamFilter.includes(p.team || '')) return false
+    if (directionFilter.length > 0 && !directionFilter.includes(p.direction)) return false
     if (startDate && p.game_date < startDate) return false
     if (endDate && p.game_date > endDate) return false
     if (minEv && (p.ev == null || p.ev < parseFloat(minEv))) return false
@@ -146,7 +153,6 @@ export default function PicksPage() {
     return true
   })
 
-  // Recalculate summary from filtered picks
   const filteredSummary = filtered.reduce((acc, p) => {
     if (p.result === 'win') acc.wins++
     else if (p.result === 'loss') acc.losses++
@@ -156,8 +162,8 @@ export default function PicksPage() {
     return acc
   }, { wins: 0, losses: 0, pending: 0, pnl: 0, staked: 0 })
 
-  // Use filtered summary if filters active, else use server summary
-  const hasFilters = statFilter.length > 0 || bookFilter.length > 0 || startDate || endDate || minEv || maxEv
+  const hasFilters = statFilter.length > 0 || bookFilter.length > 0 || teamFilter.length > 0 ||
+    directionFilter.length > 0 || startDate || endDate || minEv || maxEv
   const displaySummary = hasFilters ? filteredSummary : summary
   const roi = displaySummary.staked > 0 ? (displaySummary.pnl / displaySummary.staked) * 100 : 0
 
@@ -181,7 +187,7 @@ export default function PicksPage() {
       setShowForm(false)
       setForm({
         player: '', stat: 'points', line: '', direction: 'over',
-        odds: '', ev: '', bookmaker: '', units: '1',
+        odds: '', ev: '', bookmaker: '', units: '1', team: '',
         game_date: new Date().toISOString().split('T')[0], notes: ''
       })
     }
@@ -257,6 +263,23 @@ export default function PicksPage() {
             selected={bookFilter}
             onChange={setBookFilter}
           />
+          {availableTeams.length > 0 && (
+            <MultiDropdown
+              label="Team"
+              options={availableTeams.map(t => ({ value: t, label: t }))}
+              selected={teamFilter}
+              onChange={setTeamFilter}
+            />
+          )}
+          <MultiDropdown
+            label="Direction"
+            options={[
+              { value: 'over', label: 'Over' },
+              { value: 'under', label: 'Under' },
+            ]}
+            selected={directionFilter}
+            onChange={setDirectionFilter}
+          />
           <div className={styles.dateGroup}>
             <span className={styles.filterLabel}>From</span>
             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={styles.dateInput} />
@@ -273,15 +296,10 @@ export default function PicksPage() {
           </div>
           {hasFilters && (
             <button className={styles.clearBtn} onClick={() => {
-              setStatFilter([])
-              setBookFilter([])
-              setStartDate('')
-              setEndDate('')
-              setMinEv('')
-              setMaxEv('')
-            }}>
-              Clear
-            </button>
+              setStatFilter([]); setBookFilter([]); setTeamFilter([])
+              setDirectionFilter([]); setStartDate(''); setEndDate('')
+              setMinEv(''); setMaxEv('')
+            }}>Clear</button>
           )}
         </div>
       )}
@@ -292,6 +310,10 @@ export default function PicksPage() {
             <div className={styles.field}>
               <label>Player</label>
               <input value={form.player} onChange={e => setForm(f => ({ ...f, player: e.target.value }))} placeholder="LeBron James" required />
+            </div>
+            <div className={styles.field}>
+              <label>Team</label>
+              <input value={form.team} onChange={e => setForm(f => ({ ...f, team: e.target.value }))} placeholder="Los Angeles Lakers" />
             </div>
             <div className={styles.field}>
               <label>Stat</label>
@@ -358,6 +380,7 @@ export default function PicksPage() {
               <tr>
                 <th>Date</th>
                 <th>Player</th>
+                <th>Team</th>
                 <th>Stat</th>
                 <th>Line</th>
                 <th>Dir</th>
@@ -391,6 +414,7 @@ export default function PicksPage() {
                       )}
                     </td>
                     <td className={styles.playerCell}>{p.player}</td>
+                    <td className={styles.mutedCell}>{p.team || '—'}</td>
                     <td className={styles.mutedCell}>{STAT_LABELS[p.stat] || p.stat}</td>
                     <td>{p.line}</td>
                     <td>
@@ -423,9 +447,7 @@ export default function PicksPage() {
                         <span className={pnl >= 0 ? styles.pos : styles.neg}>
                           {pnl >= 0 ? '+' : ''}${pnl.toFixed(0)}
                         </span>
-                      ) : (
-                        <span className={styles.mutedCell}>—</span>
-                      )}
+                      ) : <span className={styles.mutedCell}>—</span>}
                     </td>
                     {isAdmin && (
                       <td>

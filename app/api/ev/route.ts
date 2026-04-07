@@ -51,9 +51,9 @@ export async function GET() {
     .single()
 
   const rows = data || []
-  const games = [...new Set(rows.map((r: any) => r.game))].filter(Boolean)
-  const books = [...new Set(rows.map((r: any) => r.bookmaker))].filter(Boolean)
-  const stats = [...new Set(rows.map((r: any) => r.stat))].filter(Boolean)
+  const games = [...new Set(rows.map((r: any) => r.game))].filter(Boolean).sort()
+  const books = [...new Set(rows.map((r: any) => r.bookmaker))].filter(Boolean).sort()
+  const stats = [...new Set(rows.map((r: any) => r.stat))].filter(Boolean).sort()
   const lastUpdated = settings?.value || null
 
   return NextResponse.json({ rows, games, books, stats, subscribed, lastUpdated })

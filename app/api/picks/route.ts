@@ -100,13 +100,14 @@ export async function POST(request: NextRequest) {
   if (!access?.is_admin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
   const body = await request.json()
+  console.log('POST /api/picks body:', JSON.stringify(body)) // <-- add here
   const { data: pick, error } = await serviceClient
     .from('picks')
     .insert({
       player: body.player, stat: body.stat, line: body.line,
       direction: body.direction, odds: body.odds, bookmaker: body.bookmaker,
       units: body.units, game_date: body.game_date, notes: body.notes || null,
-      ev: body.ev ?? null, result: 'pending',
+      ev: body.ev ?? null, result: 'pending', team: body.team || null,
     })
     .select().single()
 

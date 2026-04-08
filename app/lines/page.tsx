@@ -41,6 +41,7 @@ export default function LinesPage() {
   const [loading, setLoading] = useState(true)
   const [gameFilter, setGameFilter] = useState('')
   const [statFilter, setStatFilter] = useState('')
+  const [playerFilter, setPlayerFilter] = useState('')
   const [games, setGames] = useState<string[]>([])
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
@@ -59,6 +60,7 @@ export default function LinesPage() {
   const filtered = rows.filter(r => {
     if (gameFilter && r.game !== gameFilter) return false
     if (statFilter && r.stat !== statFilter) return false
+    if (playerFilter && !r.player.toLowerCase().includes(playerFilter.toLowerCase())) return false
     return true
   })
 
@@ -127,6 +129,14 @@ export default function LinesPage() {
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
+        <span className={styles.filterLabel}>Player</span>
+        <input
+          type="text"
+          value={playerFilter}
+          onChange={e => setPlayerFilter(e.target.value)}
+          placeholder="Search player..."
+          className={styles.playerSearch}
+        />
       </div>
 
       <div className={styles.content}>
@@ -139,6 +149,7 @@ export default function LinesPage() {
                 <thead>
                   <tr>
                     <th className={styles.thLeft}>Player</th>
+                    <th className={styles.thLeft}>Stat</th>
                     {BOOKS.map(b => <th key={b}>{b}</th>)}
                   </tr>
                 </thead>
@@ -147,25 +158,26 @@ export default function LinesPage() {
                     const boBook = bestOver(row)
                     const buBook = bestUnder(row)
                     return (
-                      <tr key={i}>
-                        <td className={styles.playerCell}>
-                          {row.player}
-                          <span className={styles.gameTag}>{row.away_team} @ {row.home_team}</span>
-                        </td>
-                        {BOOKS.map(b => {
-                          const l = row.lines[b]
-                          if (!l) return <td key={b} className={styles.empty}>—</td>
-                          return (
-                            <td key={b}>
-                              <div className={styles.cellWrap}>
-                                <span className={styles.cellLine}>{l.line}</span>
-                                <span className={b === boBook ? styles.bestOver : styles.over}>O {l.over}</span>
-                                <span className={b === buBook ? styles.bestUnder : styles.under}>U {l.under}</span>
-                              </div>
-                            </td>
-                          )
-                        })}
-                      </tr>
+                    <tr key={i}>
+                      <td className={styles.playerCell}>
+                        {row.player}
+                        <span className={styles.gameTag}>{row.away_team} @ {row.home_team}</span>
+                      </td>
+                      <td className={styles.mutedCell}>{STAT_LABELS[row.stat] || row.stat}</td>
+                      {BOOKS.map(b => {
+                        const l = row.lines[b]
+                        if (!l) return <td key={b} className={styles.empty}>—</td>
+                        return (
+                          <td key={b}>
+                            <div className={styles.cellWrap}>
+                              <span className={styles.cellLine}>{l.line}</span>
+                              <span className={b === boBook ? styles.bestOver : styles.over}>O {l.over}</span>
+                              <span className={b === buBook ? styles.bestUnder : styles.under}>U {l.under}</span>
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
                     )
                   })}
                 </tbody>

@@ -175,3 +175,13 @@
   font-weight: 500;
   color: var(--gold);
 }
+
+.playerSearch {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #333);
+  background: var(--input-bg, #1a1a1a);
+  color: inherit;
+  font-size: 13px;
+  width: 180px;
+}

@@ -113,6 +113,7 @@ export default function EVPage() {
   const [bookFilter, setBookFilter] = useState<string[]>([])
   const [scenarioFilter, setScenarioFilter] = useState<string[]>([])
   const [marketFilter, setMarketFilter] = useState<string[]>([])
+  const [playerFilter, setPlayerFilter] = useState('')
   const [posOnly, setPosOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('ev')
   const [sortDir, setSortDir] = useState(-1)
@@ -142,7 +143,7 @@ export default function EVPage() {
   }
 
   const hasFilters = teamFilter.length > 0 || statFilter.length > 0 || bookFilter.length > 0 ||
-    scenarioFilter.length > 0 || marketFilter.length > 0 || posOnly
+    scenarioFilter.length > 0 || marketFilter.length > 0 || posOnly || playerFilter !== ''
 
   function clearFilters() {
     setTeamFilter([])
@@ -151,6 +152,7 @@ export default function EVPage() {
     setScenarioFilter([])
     setMarketFilter([])
     setPosOnly(false)
+    setPlayerFilter('')
   }
 
   const filtered = rows
@@ -164,9 +166,13 @@ export default function EVPage() {
       }
       if (marketFilter.length > 0 && !marketFilter.includes(r.market_type)) return false
       if (posOnly && r.ev <= 0) return false
+      if (playerFilter && !r.player.toLowerCase().includes(playerFilter.toLowerCase())) return false
       return true
     })
     .sort((a, b) => {
+      if (sortKey === 'ev') {
+        return (calcEvPct(a.ev, a.odds) - calcEvPct(b.ev, b.odds)) * sortDir
+      }
       const av = a[sortKey], bv = b[sortKey]
       if (typeof av === 'string' && typeof bv === 'string') return av.localeCompare(bv) * sortDir
       return ((av as number) - (bv as number)) * sortDir
@@ -255,6 +261,13 @@ export default function EVPage() {
           ]}
           selected={marketFilter}
           onChange={setMarketFilter}
+        />
+        <input
+          type="text"
+          value={playerFilter}
+          onChange={e => setPlayerFilter(e.target.value)}
+          placeholder="Search player..."
+          className={styles.playerSearch}
         />
         <button
           className={`${styles.toggleBtn} ${posOnly ? styles.on : ''}`}

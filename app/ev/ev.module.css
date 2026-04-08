@@ -435,3 +435,13 @@
   color: var(--red);
   border-color: var(--red);
 }
+
+.playerSearch {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #1a1a1a;
+  color: inherit;
+  font-size: 13px;
+  width: 180px;
+}

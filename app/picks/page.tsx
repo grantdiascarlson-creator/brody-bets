@@ -7,6 +7,7 @@ import styles from './picks.module.css'
 type Pick = {
   id: number
   player: string
+  team: string | null
   stat: string
   line: number
   direction: string
@@ -19,7 +20,6 @@ type Pick = {
   game_date: string
   submitted_at: string
   notes: string | null
-  team: string | null
 }
 
 const STAT_LABELS: Record<string, string> = {

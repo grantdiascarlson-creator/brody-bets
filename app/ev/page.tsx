@@ -295,7 +295,6 @@ export default function EVPage() {
                 <SortTh col="odds" label="Odds" />
                 <SortTh col="bookmaker" label="Book" />
                 <SortTh col="market_type" label="Market" />
-                <SortTh col="proj" label="Proj" />
                 <SortTh col="scenario" label="Scenario" />
                 <th>Q Warning</th>
                 <SortTh col="ev" label="EV%" />
@@ -319,7 +318,6 @@ export default function EVPage() {
                       {r.market_type === 'alternate' ? 'Alt' : 'O/U'}
                     </span>
                   </td>
-                  <td className={styles.mutedCell}>{r.proj}</td>
                   <td>
                     <span className={r.scenario === 'Default' ? styles.scenDefault : styles.scenAlt}>
                       {r.scenario}
